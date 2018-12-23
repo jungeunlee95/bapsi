@@ -1,0 +1,659 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.co.bapsi.recipe.dao.RecipeDAO">
+
+   <!-- 레시피 등록 -->
+   <insert id="insertRecipe" parameterType="recipeVO">
+      insert into recipeboard(no, user_no, title, sub_title, recipe_name, user_nickname, 
+       time, cost, content, servings)
+        values(recipeboard_seq.nextval, #{userNo}, #{title}, #{subTitle}, #{recipeName}, #{userNickName},
+         #{time}, #{cost}, #{content}, #{servings})
+         <selectKey resultType="integer" keyProperty="no" order="AFTER">
+         	select recipeboard_seq.currval as no FROM DUAL
+         </selectKey>
+   </insert>
+   
+   
+   <!-- 레시피 등록 -->
+   <insert id="RecipeMainPhoto" parameterType="UploadVO">
+      insert into recipe_photo(no, recipe_no,  file_fakename, file_oriname)
+        values(recipe_photo_seq.nextval, #{recipeNo},#{file_fakename},#{file_oriname})
+   </insert>
+   <update id="updateMainPhoto" parameterType="UploadVO">
+   update recipeboard set file_fakename=#{file_fakename}
+   where no = #{recipeNo}
+   </update>
+   
+      <!-- 레시피 메인사진 수정 -->
+   <update id="reRecipeMainPhoto" parameterType="UploadVO">
+	   update recipe_photo
+	   set file_fakename=#{file_fakename}, file_oriname=#{file_oriname}
+	   where recipe_no = #{recipeNo}
+   </update>
+   
+   <update id="reupdateMainPhoto" parameterType="UploadVO">
+   update recipeboard 
+   set file_fakename=#{file_fakename}
+   where no = #{recipeNo}
+   </update>
+   
+   
+   
+   <insert id="insertRIngre" parameterType="map">
+      insert into recipe_ingredients(no,r_no, i_no, amount) 
+        values(recipe_ingredients_seq.nextval,(select max(no) from recipeboard), #{ing}, #{amount})
+   </insert>
+   <insert id="insertRTag" parameterType="map">
+      insert into recipe_tags(no,r_no, t_no) 
+        values(recipe_tags_seq.nextval ,(select max(no) from recipeboard), #{tag})
+   </insert>
+
+   <select id="selectAllTag" resultType="tagVO">
+      select no as tagNO, type tagType, name tagName from tags
+       order by no
+   </select>
+   <select id="selectAllIngre" resultType="ingVO">
+      select no as ingNo, name ingName, type ingType from ingredients
+       order by no
+   </select>
+   
+   <!-- 레시피글 상세조회 -->
+   <select id="selectByNo" parameterType="int" resultType="recipeVO">
+      select no, user_no as userNo, title, sub_title as subTitle,
+      time, cost, content
+      , user_nickname as userNickName, recipe_name as
+      recipeName,
+      to_char(reg_date, 'yyyy-MM-dd') as regDate
+      , view_cnt as
+      viewCnt, servings, file_fakename
+      from recipeboard
+      where no = #{no}
+   </select>
+   <select id="selectTagByNo" parameterType="int"
+      resultType="tagVO">
+      select t.name as tagName, t.type as tagType, t.no as tagNo
+      from recipe_tags r, tags t, recipeboard b
+      where b.no = r.r_no
+      and t.no = r.t_no
+      and b.no = #{no}
+      order by t.no
+   </select>
+   <select id="selectIngByNo" parameterType="int"
+      resultType="ingVO">
+      select i.name as ingName, r.amount as amount, i.type as ingType, i.no as ingNo 
+      from recipeboard b, recipe_ingredients r, ingredients i
+      where b.no = r.r_no
+      and i.no = r.i_no
+      and b.no = #{no}
+      order by i.no
+   </select>
+
+   <!-- 레시피 수정 -->
+   <update id="updateRecipe" parameterType="recipeVO">
+      update recipeboard set title=#{title}, sub_title=#{subTitle}, recipe_name=#{recipeName}, time=#{time},
+       cost=#{cost}, content=#{content}, servings=#{servings}, reg_date=sysdate
+      where no=#{no}
+   </update>
+   <delete id="deleteRIng" parameterType="int">
+      delete from recipe_ingredients where r_no=#{no}
+   </delete>
+   <insert id="updateRIng" parameterType="map">
+      insert into recipe_ingredients(no,r_no, i_no, amount) 
+        values(recipe_ingredients_seq.nextval,#{no}, #{ing}, #{amount})
+   </insert>
+   <delete id="deleteRTag" parameterType="int">
+      delete from recipe_tags where r_no=#{no}
+   </delete>
+   <insert id="updateRTag" parameterType="map">
+      insert into recipe_tags(no,r_no, t_no) 
+        values(recipe_tags_seq.nextval,#{no}, #{tag})
+   </insert>
+   
+     <!-- 페이징 -->
+   <select id="listPage" resultType="recipeVO">
+      <![CDATA[
+      select X.rnum, X.no, X.user_no as userNo, X.title, x.sub_title as subTitle, X.time, X.cost, X.content
+            , X.user_nickname as userNickName, X.recipe_name as recipeName, to_char(X.reg_date, 'yyyy-MM-dd') as regDate
+            , X.view_cnt as viewCnt, X.point, X.servings, X.file_fakename
+      from ( 
+          select rownum as rnum, A.no, A.user_no, A.title, A.sub_title, A.time, A.cost, A.content
+                    , A.user_nickname, A.recipe_name, A.reg_date, A.view_cnt, A.point, A.servings, A.file_fakename
+          from (
+              select no, user_no, title, sub_title, time, cost, content, user_nickname, recipe_name, reg_date, view_cnt, point, servings, file_fakename
+              from recipeboard
+              order by reg_date desc) A
+          where rownum <= #{page}*10) X
+      where X.rnum >= (#{page}*10)-9
+      ]]>
+   </select>
+   
+   <!-- 페이징 -->
+   <select id="listCriteria" resultType="recipeVO">
+      <![CDATA[
+      select X.rnum, X.no, X.user_no as userNo, X.title, x.sub_title as subTitle, X.time, X.cost, X.content
+            , X.user_nickname as userNickName, X.recipe_name as recipeName, to_char(X.reg_date, 'yyyy-MM-dd') as regDate
+            , X.view_cnt as viewCnt, X.point, X.servings, X.file_fakename
+      from ( 
+          select rownum as rnum, A.no, A.user_no, A.title, A.sub_title, A.time, A.cost, A.content
+                    , A.user_nickname, A.recipe_name, A.reg_date, A.view_cnt, A.point, A.servings, A.file_fakename
+          from (
+              select no, user_no, title, sub_title, time, cost, content, user_nickname, recipe_name, reg_date, view_cnt, point, servings,file_fakename
+              from recipeboard
+              order by no desc) A      
+          where rownum <= #{startPage}+(#{numPerPage}-1)) X
+      where X.rnum >= #{startPage}
+      ]]>
+   </select>
+   
+   <!-- 페이징 -->
+   <select id="countData" resultType="int">
+   <![CDATA[
+    select count(*) from recipeboard
+    where rownum > 0
+   ]]>
+   </select>
+
+   <!-- 조회수 증가 -->
+   <update id="updateView" parameterType="int">
+      update recipeboard
+      set view_cnt
+      = view_cnt + 1
+      where no = #{no}
+   </update>
+
+<!-- 게시글 삭제 -->
+   <delete id="delete" parameterType="int">
+      delete from recipeboard
+      where no = #{no}
+   </delete>
+   <delete id="deleteRecipeTag" parameterType="int">
+      delete from recipe_tags
+      where r_no = #{no}
+   </delete>
+   <delete id="deleteRecipeIng" parameterType="int">
+      delete from recipe_ingredients
+      where r_no = #{no}
+   </delete>
+<!-- 게시글 사진 삭제 - DB-->
+   <delete id="deleteRecipePhoto" parameterType="int">
+      delete from recipe_photo
+      where recipe_no = #{no}
+   </delete>
+   <!-- 게시글 파일 삭제 - 컴퓨터 --> 
+    <select id = "deleteRecipePhotoFile" parameterType = "int" resultType = "String">
+      select file_fakename
+      from recipe_photo
+      where recipe_no = #{no}
+   </select>
+ <!--    ★★★★★★★★★★★게시글 검색기능 구현 ★★★★★★★★★★★★★★★★  -->
+  <sql id="findSQL">
+      <where>
+        <if test="findType != null and findType =='S'.toString()">
+           and title like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType =='C'.toString()">
+           and content like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType=='W'.toString()">
+           and user_nickname like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType=='F'.toString()">
+           and recipe_name like '%'||#{keyword}||'%'
+        </if>
+     </where>  
+  </sql>
+  
+  <sql id="findTSQL">
+        <if test="findType != null and findType =='S'.toString()">
+           and b.title like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType =='C'.toString()">
+           and b.content like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType=='W'.toString()">
+           and b.user_nickname like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType=='F'.toString()">
+           and b.recipe_name like '%'||#{keyword}||'%'
+        </if> 
+  </sql>
+  
+  <!--게시글: 검색기능 구현  -->
+   <select id="listFind" resultType="recipeVO">
+      select X.rnum, X.no, X.user_no as userNo, X.title, x.sub_title as subTitle, X.time, X.cost, X.content
+            , X.user_nickname as userNickName, X.recipe_name as recipeName, to_char(X.reg_date, 'yyyy-MM-dd') as regDate
+            , X.view_cnt as viewCnt, X.point, X.servings, X.file_fakename
+      from ( 
+          select rownum as rnum, A.no, A.user_no, A.title, A.sub_title, A.time, A.cost, A.content
+                    , A.user_nickname, A.recipe_name, A.reg_date, A.view_cnt, A.point, A.servings, A.file_fakename
+          from (
+              select no, user_no, title, sub_title, time, cost, content, user_nickname, recipe_name, reg_date, view_cnt, point, servings, file_fakename
+              from recipeboard
+              
+              <include refid="findSQL"></include>
+        <![CDATA[      
+              order by no desc) A      
+          where rownum <= #{startPage}+(#{numPerPage}-1)) X
+      where X.rnum >= #{startPage}
+      ]]>            
+    </select>
+    
+  <!-- (데이터 수 검색)  -->
+  <select id="findCountDataR" resultType="int">
+        select count(*) 
+        from recipeboard
+     
+      <include refid="findSQL"></include>
+  </select>
+  
+  <!-- 태그페이지 검색기능 -->
+  <select id="tagListCriteria" resultType="recipeVO">
+
+      select X.rnum, X.no, X.user_no as userNo, X.title, x.sub_title as subTitle, X.time, X.cost, X.content
+            , X.user_nickname as userNickName, X.recipe_name as recipeName, to_char(X.reg_date, 'yyyy-MM-dd') as regDate
+            , X.view_cnt as viewCnt, X.point, X.servings, X.file_fakename
+      from ( 
+          select rownum as rnum, A.no, A.user_no, A.title, A.sub_title, A.time, A.cost, A.content
+                    , A.user_nickname, A.recipe_name, A.reg_date, A.view_cnt, A.point, A.servings, A.file_fakename
+          from (
+              select b.no, b.user_no, b.title, b.sub_title, b.time, b.cost, b.content, b.user_nickname, b.recipe_name, b.reg_date, b.view_cnt, b.point, b.servings, b.file_fakename
+
+              from recipeboard b, recipe_tags r, tags t 
+                where b.no = r.r_no
+                and t.no = r.t_no
+                and t.name = #{TagName}
+               
+                <include refid="findTSQL"></include>
+      <![CDATA[
+                order by no desc) A      
+          where rownum <= #{startPage}+(#{numPerPage}-1)) X
+      where X.rnum >= #{startPage}
+      ]]>
+   </select>
+   
+      
+   <!-- 페이징 -->
+   <select id="tcountData" resultType="int">
+
+        select count(*)
+     from (select b.no
+             from recipeboard b, recipe_tags r, tags t 
+                where b.no = r.r_no
+                and t.no = r.t_no
+                and t.name = #{TagName}
+                 <include refid="findTSQL"></include>
+                  order by no desc)
+
+   </select>
+   
+ <!--************************포인트*********************************  -->    
+   <!-- 포인트 -->
+   <select id = "checkBoard" resultType="int">      
+   select count(*)
+   from(select user_no , type
+   from rpoint
+   where type = 'U'
+   and user_no = #{userNo} 
+   and receipe_no  = #{receipeNo})
+   </select>
+   
+   <select id = "checkBoardO" resultType="int">      
+   select count(*)
+   from(select user_no , type
+   from rpoint
+   where type = 'D'
+   and user_no = #{userNo} 
+   and receipe_no  = #{receipeNo})
+   </select>
+   
+   <update id="getRPoint">
+      update recipeboard 
+      set point = (point+1) 
+      where no = #{receipeNo}
+   </update>
+   
+   <update id="getMPoint">
+      update ruser
+      set point = (point+1) 
+      where no = #{receipeUserNo}
+   </update>
+   
+   <update id="loseRPoint">
+      update recipeboard 
+      set point = (point-1) 
+      where no = #{receipeNo}
+   </update>
+   
+   <update id="loseMPoint">
+      update ruser
+      set point = (point-1) 
+      where no = #{receipeUserNo}
+   </update>
+
+   <insert id="addLogUp">
+      insert into rpoint(no, user_no,receipe_user_no, receipe_no, type) 
+      values(rpoint_seq.nextval, #{userNo}, #{receipeUserNo}, #{receipeNo}, 'U')
+   </insert>
+   
+   <insert id="addLogDownP">
+      insert into rpoint(no, user_no,receipe_user_no, receipe_no, type) 
+      values(rpoint_seq.nextval, #{userNo}, #{receipeUserNo}, #{receipeNo}, 'D')      
+   </insert> 
+   
+   <delete id="deleteLog">
+      delete from rpoint
+      where user_no = #{userNo}
+      and receipe_user_no = #{receipeUserNo}
+      and receipe_no =  #{receipeNo}
+      and type = 'U'
+   </delete>
+   
+   <delete id="deleteLogDown">
+      delete from rpoint
+      where user_no = #{userNo}
+      and receipe_user_no = #{receipeUserNo}
+      and receipe_no =  #{receipeNo}
+      and type = 'D'
+   </delete>
+   
+   <select id="checkLike" resultType="int">
+      select count(*) 
+      from(select * from rpoint
+          where user_no = #{userNo}
+          and receipe_no =  #{receipeNo}
+          and type = 'U')
+   </select>
+   
+   <select id="checkDown" resultType="int">
+      select count(*) 
+      from(select * from rpoint
+          where user_no = #{userNo}
+          and receipe_no =  #{receipeNo}
+          and type = 'D')
+   </select>
+   
+    <!-- home 레시피 조회   -->
+    
+    <!--************************랭킹 페이지*********************************  -->    
+   <select id="selectBestRecipe" resultType="recipeVO">
+    <![CDATA[
+      select X.rnum, X.no, X.user_no as userNo, X.title, x.sub_title as subTitle, X.time, X.cost, X.content
+            , X.user_nickname as userNickName, X.recipe_name as recipeName, to_char(X.reg_date, 'yyyy-MM-dd') as regDate
+            , X.view_cnt as viewCnt, X.servings, X.point, X.file_fakename
+      from ( 
+          select rownum as rnum, A.no, A.user_no, A.title, A.sub_title, A.time, A.cost, A.content
+                    , A.user_nickname, A.recipe_name, A.reg_date, A.view_cnt, A.servings,A.point, A.file_fakename
+          from (
+              select no, user_no, title, sub_title, time, cost, content, user_nickname, recipe_name, reg_date, view_cnt, servings,point, file_fakename
+              from recipeboard
+              order by point desc) A) X
+          ]]>
+   </select>
+   
+      <select id="selectBestMember" resultType="memberVO">
+    <![CDATA[
+      select b.rnum, b.no, b.email, b.name, b.nickname,b.tel,b.age,b.comments,b.type,b.point, b.follower_cnt as followrCnt, b.file_fakename
+     	from(
+ 		 select rownum as rnum, a.no, a.email, a.name, a.nickname, a.tel, a.age, a.comments, a.type, a.point, a.follower_cnt, a.file_fakename
+ 		    from (
+     			select no, email, name, nickname,age, tel, comments, type, point,follower_cnt, file_fakename
+ 		            from ruser
+ 		            order by follower_cnt desc) a ) b
+          ]]>
+   </select>
+   
+         <select id="selectBestMemberR" resultType="memberVO">
+    <![CDATA[
+      select b.rnum, b.no, b.email, b.name, b.nickname,b.tel,b.age,b.comments,b.type,b.point, b.follower_cnt as followrCnt, b.file_fakename
+     	from(
+ 		 select rownum as rnum, a.no, a.email, a.name, a.nickname, a.tel, a.age, a.comments, a.type, a.point, a.follower_cnt, a.file_fakename
+ 		    from (
+     			select no, email, name, nickname,age, tel, comments, type, point,follower_cnt,file_fakename
+ 		            from ruser
+ 		            order by follower_cnt desc) a ) b
+          ]]>
+   </select>
+
+	<select id="selectCommentMember" resultType="memberVO">
+    <![CDATA[
+		select no, email, name, nickname, tel, gender, age, comments, type, to_char(reg_date, 'yyyy-mm-dd') as reg_date
+		        		, follower_cnt as followrCnt, file_fakename, aa.wrote_cnt as wroteCnt from ruser, 
+		(select login_user_no as loginUserNo, count(no) as wrote_cnt from rcomments 
+		where TO_CHAR(REG_DATE, 'YYYYMMDD') >= TO_CHAR(SYSDATE-7,'YYYYMMDD')
+		group by login_user_no) aa 
+		where aa.loginUserNo=no 
+		order by wrote_cnt desc
+          ]]>
+	</select>
+
+	<select id="selectRecipeMember" resultType="memberVO">
+    <![CDATA[
+		select no, email, name, nickname, tel, gender, age, comments, type, to_char(reg_date, 'yyyy-mm-dd') as reg_date
+		        		, follower_cnt as followrCnt, file_fakename, aa.wrote_cnt as wroteCnt from ruser, 
+		(select user_no, count(no) as wrote_cnt from recipeboard 
+		where TO_CHAR(REG_DATE, 'YYYYMMDD') >= TO_CHAR(SYSDATE-7,'YYYYMMDD')
+		group by user_no 
+		) aa 
+		where aa.user_no=no 
+		order by wrote_cnt desc
+          ]]>
+	</select>
+   
+ <!--************************회원 상세*********************************  -->    
+   <select id="pointCnt" resultType="int">
+   		select count(*) from rpoint where receipe_user_no = #{no}
+   </select>
+   <select id="recipeCnt" resultType="int">
+		select count(*) from recipeboard where user_no = #{no}
+   </select>
+	<select id="userPageRecipe" resultType="recipeVO">
+      <![CDATA[
+      select X.rnum, X.no, X.user_no as userNo, X.title, x.sub_title as subTitle, X.time, X.cost, X.content
+            , X.user_nickname as userNickName, X.recipe_name as recipeName, to_char(X.reg_date, 'yyyy-MM-dd') as regDate
+            , X.view_cnt as viewCnt, X.servings, X.file_fakename
+      from ( 
+          select rownum as rnum, A.no, A.user_no, A.title, A.sub_title, A.time, A.cost, A.content
+                    , A.user_nickname, A.recipe_name, A.reg_date, A.view_cnt, A.servings, A.file_fakename
+          from (
+              select no, user_no, title, sub_title, time, cost, content, user_nickname, recipe_name, reg_date, view_cnt, servings, file_fakename
+              from recipeboard
+              order by reg_date desc) A
+          where user_no = #{no}) X
+      ]]>
+   </select>
+      <select id="likeRecipe" resultType="recipeVO">
+      select no, user_no as userNo, title, sub_title as subTitle, time, cost, content, 
+            user_nickname as userNickName, recipe_name as recipeName, reg_date as regDate, 
+            view_cnt as viewCnt, servings, file_fakename
+       from recipeboard,
+      (select receipe_no from rpoint where user_no = #{no}) aa
+      where aa.receipe_no = no
+      order by reg_date desc
+   </select>
+   <select id="followingCnt" resultType="int">
+		select count(*) from rfollow where follower=#{no}
+   </select>
+   
+   <select id="followMe" resultType="MemberVO">
+	select no, email, name, nickname, tel, gender, age, comments, type
+			, to_char(reg_date, 'yyyy-mm-dd') as reg_date
+        	, follower_cnt as followrCnt, file_fakename
+    from ruser,
+	(select follower from rfollow
+	where followee = #{no})aa
+	where aa.follower = no
+	order by reg_date desc
+   </select>
+   <select id="followSome" resultType="MemberVO">
+	select no, email, name, nickname, tel, gender, age, comments, type
+			, to_char(reg_date, 'yyyy-mm-dd') as reg_date
+        	, follower_cnt as followrCnt, file_fakename
+    from ruser,
+	(select followee from rfollow
+	where follower = #{no})aa
+	where aa.followee = no
+	order by reg_date desc
+   </select>
+   
+   <!--************************회원상세끝***********************  -->
+   
+ <!--************************팔로우*********************************  -->    
+   
+   <update id="getFollowCnt">
+      update ruser 
+      set follower_cnt = (follower_cnt+1) 
+      where no = #{receipeUserNo}
+   </update>
+
+   <update id="loseFollowCnt">
+      update ruser 
+      set follower_cnt = (follower_cnt-1) 
+      where no = #{receipeUserNo}
+   </update> 
+
+    <insert id="insertFollower">
+      insert into rfollow(no,follower,followee) 
+      values(rfollow_seq.nextval,#{userNo}, #{receipeUserNo})
+   </insert>
+   
+   <delete id="deleteFollower">
+      delete from rfollow
+      where follower = #{userNo}
+      and followee = #{receipeUserNo}
+      and type = 'F'
+   </delete>
+   
+   <select id="followCheck" resultType="int">
+      select count(*) 
+      from(select * from rfollow
+          where follower = #{userNo}
+          and followee =  #{receipeUserNo}
+          and type = 'F')
+   </select>
+
+   <!--전체 뷰카운트 나타내는 곳 -->
+   <select id="viewCnt" resultType="int">
+      select sum(view_cnt)
+      from recipeboard
+
+   </select>
+   
+   <!-- 카테고리 불러오기 -->
+   <select id="getCategoryNames" parameterType="String" resultType="tagVO">
+       select no as tagNo, type tagType, name tagName 
+       from tags
+       where type = #{ type }
+       order by no
+   </select> 
+   
+   <!-- 카테고리 체크로 불러오기 -->
+   <select id="selectRecipeNoByTagNo" resultType="Integer">
+       select r_no from recipe_tags
+       where
+       <foreach collection="array" item="tag" separator="or">
+           t_no=#{tag}
+       </foreach>
+    
+   </select>
+   
+   <!-- 체크박스 페이징 -->
+   <select id="selectRecipeByRecNo"  resultType="recipeVO">
+      select * from ( 
+          select rownum as rnum, A.no, A.user_no as userNo, A.title, A.sub_title as subTitle , A.time, A.cost, A.content
+                       , A.user_nickname as userNickName, A.recipe_name as recipeName, to_char(A.reg_date, 'yyyy-MM-dd') as regDate, A.view_cnt as viewCnt, A.point, A.servings, A.file_fakename
+          from (
+              select no, user_no, title, sub_title, time, cost, content, user_nickname, recipe_name, reg_date, view_cnt, point, servings, file_fakename
+              from recipeboard
+              where
+            <foreach collection="listResult" item="recNo" separator="or">
+	           no=#{recNo}
+	       </foreach>    
+              order by no desc) A)where rnum between #{stRow} and #{endRow}
+   </select>   
+   
+   
+<!-- **********************************************있는 재료로 추천받기 ***************************************** -->
+
+		<!-- 재료 넘버를 보내서 레시피 넘버 불러오기 -->
+		  <select id="selectReByInNo" resultType="Integer">
+		     select r_no from recipe_ingredients where
+		     <foreach collection="list" item="ingNo" separator="or">
+		        i_no=#{ingNo}
+		     </foreach>
+		  </select>
+  
+
+
+		<!-- 레시피 넘버로 레시피게시판 불러오기 -->
+		<select id="selectRecipeByReNo"  resultType="recipeVO">
+	      	select * from ( 
+	          select rownum as rnum, A.no, A.user_no as userNo, A.title, A.sub_title as subTitle , A.time, A.cost, A.content
+	                    , A.user_nickname as userNickName, A.recipe_name as recipeName, to_char(A.reg_date, 'yyyy-MM-dd') as regDate, A.view_cnt as viewCnt , A.point, A.servings, A.file_fakename
+	          from (
+	              select no, user_no, title, sub_title, time, cost, content, user_nickname, recipe_name, reg_date, view_cnt, point, servings, file_fakename
+	              from recipeboard
+	              where
+	            <foreach collection="targetRecipeList" item="reNo" separator="or">
+	              no=#{reNo}
+	          	</foreach>    
+	              order by no desc) A )where rnum between #{strRow} and #{endRow}
+   		</select>
+   		
+		   <!--************************homeController********************************* -->
+	   <select id="winterRecipe" resultType="recipeVO">
+	    <![CDATA[
+	          select rownum as rnum, A.no, A.user_no as userNo, A.title, A.sub_title as subTitle, A.time, A.cost, A.content
+	                    , A.user_nickname as userNickName , A.recipe_name as recipeName , A.reg_date as regDate, A.view_cnt as viewCnt, A.servings, A.file_fakename, A.point
+	          from (
+	              select b.no, b.user_no, b.title, b.sub_title, b.time, b.cost, b.content, b.user_nickname, b.recipe_name, b.reg_date, b.view_cnt, b.servings, b.file_fakename, b.point
+	              from recipeboard b, recipe_tags r, tags t 
+	                where b.no = r.r_no
+	                and t.no = r.t_no
+	                and t.name = '겨울') A
+	                order by A.point desc
+	          ]]>
+	   </select>
+	   <select id="easyRecipe" resultType="recipeVO">
+	    <![CDATA[
+	          select rownum as rnum, A.no, A.user_no as userNo, A.title, A.sub_title as subTitle, A.time, A.cost, A.content
+	                    , A.user_nickname as userNickName , A.recipe_name as recipeName , A.reg_date as regDate, A.view_cnt as viewCnt, A.servings, A.file_fakename, A.point
+	          from (
+	              select b.no, b.user_no, b.title, b.sub_title, b.time, b.cost, b.content, b.user_nickname, b.recipe_name, b.reg_date, b.view_cnt, b.servings, b.file_fakename, b.point
+	              from recipeboard b, recipe_tags r, tags t 
+	                where b.no = r.r_no
+	                and t.no = r.t_no
+	                and t.name = '실생활 요리') A
+	                order by A.point desc
+	          ]]>
+	   </select>
+	   <!--************************************************************************************** -->  
+	<!--********************마이페이지 레시피 정보 다  가져오기********************************  -->
+	<select id="recipeProfile2" resultType="recipeVO">
+		select  cc.no,cc.user_no,cc.title, cc.sub_title, cc.time, cc.cost, cc.content, cc.file_fakename 
+			from recipeboard cc,
+							    (select no, email, name, nickname, tel, gender, age, comments, type
+										, to_char(reg_date, 'yyyy-mm-dd') as reg_date
+							        	, follower_cnt as followrCnt, file_fakename
+									    from ruser,
+													(select followee from rfollow
+													where follower =#{no}) aa
+		where aa.followee = no order by reg_date desc) bb where bb.no=cc.user_no order by cc.reg_date desc
+		
+	</select>
+	<!--******************************************************************************  --> 
+	   <!--********************마이페이지 레시피 정보 다  가져오기********************************  -->
+   <select id="myPageRecipeProfile" resultType="recipeVO">
+            select cc.no,cc.user_no as userNo,cc.title,cc.user_nickname as userNickName, cc.sub_title as subTitle, cc.time, cc.cost, cc.content,cc.recipe_name as recipeName, cc.file_fakename
+         from recipeboard cc,
+                         (select no, email, name, nickname, tel, gender, age, comments, type
+                              , to_char(reg_date, 'yyyy-mm-dd') as reg_date
+                                , follower_cnt as followrCnt, file_fakename
+                               from ruser,
+                                       (select followee from rfollow
+                                       where follower =#{no}) aa
+         where aa.followee = no ) bb where bb.no=cc.user_no order by cc.reg_date desc
+   </select>
+   <!--******************************************************************************  --> 	
+</mapper>

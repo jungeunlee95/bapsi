@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+  <mapper namespace="kr.co.bapsi.entertain.dao.EntertainDAO">
+  
+  <sql id="mukbangSQL">
+  
+       <where>
+       
+          <if test="findType != null and findType =='A'.toString()">
+           and youtuber like '%'||#{keyword}||'%'
+           or korea like '%'||#{keyword}||'%'
+           or china like '%'||#{keyword}||'%'
+           or usa like '%'||#{keyword}||'%'
+           or japan like '%'||#{keyword}||'%'
+           or night like '%'||#{keyword}||'%'
+           or dessert like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType =='Y'.toString()">
+           and youtuber like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType =='K'.toString()">
+           and korea like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType=='C'.toString()">
+           and china like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType=='U'.toString()">
+           and usa like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and  findType == 'J'.toString()">
+           and japan like '%'||#{keyword}||'%'
+        </if>
+        <if test="findType != null and findType =='N'.toString()">
+          and night like '%'||#{keyword}||'%'
+        </if>
+         <if test="findType != null and findType =='D'.toString()">
+          and dessert like '%'||#{keyword}||'%'
+        </if>
+     </where>
+     
+  </sql>
+  
+  <select id = "findMukbang" resultType="MukbangVO">
+  select b.rnum, b.no, b.korea, b.china, b.japan, b.usa, b.night, b.dessert, b.youtuber, b.url 
+     from(
+     select rownum as rnum, a.no, a.korea, a.china, a.japan, a.usa, a.night, a.dessert, a.youtuber, a.url
+        from(
+        select no, korea, china, japan, usa, night, dessert, youtuber, url
+        from mukbang
+        
+        <include refid="mukbangSQL" />
+     
+     <![CDATA[
+        order by no desc) a
+        where rownum <=#{startPage}+(#{numPerPage}-1))b
+        where b.rnum >= #{startPage}
+     ]]>
+  </select>
+  
+  <select id = "findCount" resultType = "int">
+  
+     select count(no)
+     from mukbang
+     
+     <include refid="mukbangSQL" />
+     
+  </select>
+  
+  <!-- 랜덤음식 추천 -->
+  <select id = "randomEat" parameterType="int" resultType="RandomEatVO">
+     select food, url
+     from randomEat
+     where no = #{no}
+  </select>
+  
+  <!-- 있는재료로 음식 만들기 -->
+  
+  <!-- 타입 보여주기 -->
+  <select id = "ingredientsTypeList" parameterType="String" resultType="String">
+     select type from ingredients group by (type) order by min(no)
+  </select>
+  
+  <!-- 모든 재료 보여주기 -->
+  <select id = "ingredientsNameList" resultType = "ingVO">
+      select name as ingName, no as ingNo
+     from  ingredients
+  </select>
+  
+  <!-- 타입에 따라 재료 보여주기 -->
+  <select id = "selectIngredientsType" parameterType="String" resultType="ingVO">
+     select name as ingName , no as ingNo
+     from ingredients
+     where type = #{type}
+  </select>
+  
+ <!-- 
+  재료 넘버를 보내서 레시피 넘버 불러오기
+  <select id="selectReByInNo" resultType="Integer">
+     select r_no from recipe_ingredients where
+     <foreach collection="list" item="ingNo" separator="or">
+        i_no=#{ingNo}
+     </foreach>
+  </select>
+  
+  레시피 넘버로 레시피게시판 불러오기
+   <select id="selectRecipeByReNo" resultType="recipeVO">
+     select * from recipeboard where
+     <foreach collection="list" item="reNo" separator="or">
+        no=#{reNo}
+     </foreach>
+  </select>
+
+  -->   
+  </mapper>
